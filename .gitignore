@@ -1,0 +1,38 @@
+# ============================================================
+# Pengaman: jangan unggah rahasia & folder berat ke GitHub.
+# Berlaku untuk kedua subfolder (python & laravel).
+# ============================================================
+
+# --- Rahasia: WAJIB tidak diunggah ---
+**/.env
+**/.env.*
+!**/.env.example
+**/biometric_keys.json
+**/*.key
+**/*.pem
+
+# --- Python ---
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.pyc
+**/model_files/
+**/instance/
+
+# --- Laravel / PHP ---
+**/vendor/
+**/node_modules/
+**/database/*.sqlite
+**/database/*.sqlite-journal
+**/storage/*.key
+**/storage/logs/*.log
+**/storage/framework/cache/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/public/hot
+
+# --- Umum ---
+**/.DS_Store
+Thumbs.db
+**/*.log
+**/backup/

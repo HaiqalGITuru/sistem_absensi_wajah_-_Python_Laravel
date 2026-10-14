@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Ubah karyawan' if employee else 'Tambah karyawan' }}{% endblock %}
+{% block page_class %}page-medium{% endblock %}
+
+{% macro field_error(name) %}
+  {% if errors.get(name) %}<p class="field-error" id="{{ name }}-error">{{ errors[name] }}</p>{% endif %}
+{% endmacro %}
+
+{% block content %}
+<p class="breadcrumb"><a href="{{ url_for('employees.list_employees') }}">Karyawan</a></p>
+<h1>{{ 'Ubah data ' ~ employee.employee_code if employee else 'Tambah karyawan' }}</h1>
+
+{% if errors %}
+<div class="flash flash-error" role="alert">Periksa kembali isian yang ditandai.</div>
+{% endif %}
+
+{% if not schedules %}
+<div class="flash flash-info">
+  Belum ada jadwal kerja aktif. <a href="{{ url_for('schedules.create') }}">Buat jadwal kerja</a> terlebih dahulu.
+</div>
+{% endif %}
+
+<section class="card">
+  <form method="post" class="form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <label for="employee_code">Kode karyawan</label>
+    <input id="employee_code" name="employee_code" type="text" required maxlength="30"
+           value="{{ values.get('employee_code', '') }}"
+           {% if errors.get('employee_code') %}aria-invalid="true" aria-describedby="employee_code-error"{% endif %}>
+    <p class="hint">Contoh: NIP atau kode internal. Disimpan dalam huruf besar.</p>
+    {{ field_error('employee_code') }}
+
+    <label for="full_name">Nama lengkap</label>
+    <input id="full_name" name="full_name" type="text" required maxlength="150"
+           value="{{ values.get('full_name', '') }}"
+           {% if errors.get('full_name') %}aria-invalid="true" aria-describedby="full_name-error"{% endif %}>
+    {{ field_error('full_name') }}
+    {% if errors.get('confirm_duplicate_name') or values.get('confirm_duplicate_name') %}
+    <label class="check-confirm" for="confirm_duplicate_name">
+      <input type="checkbox" id="confirm_duplicate_name" name="confirm_duplicate_name" value="1"
+             {% if values.get('confirm_duplicate_name') %}checked{% endif %}>
+      Saya sudah memeriksa: ini orang yang BERBEDA dengan nama yang sama.
+    </label>
+    {% endif %}
+
+    <label for="department">Departemen / bidang</label>
+    <input id="department" name="department" type="text" required maxlength="100"
+           list="department-options" value="{{ values.get('department', '') }}"
+           {% if errors.get('department') %}aria-invalid="true" aria-describedby="department-error"{% endif %}>
+    <datalist id="department-options">
+      {% for d in departments %}<option value="{{ d }}">{% endfor %}
+    </datalist>
+    <p class="hint">Pilih dari daftar atau ketik nama bidang baru.</p>
+    {{ field_error('department') }}
+
+    <label for="work_schedule_id">Jadwal kerja</label>
+    <select id="work_schedule_id" name="work_schedule_id" required
+            {% if errors.get('work_schedule_id') %}aria-invalid="true" aria-describedby="work_schedule_id-error"{% endif %}>
+      <option value="">Pilih jadwal</option>
+      {% for s in schedules %}
+      <option value="{{ s.id }}" {% if values.get('work_schedule_id') == s.id|string %}selected{% endif %}>
+        {{ s.name }} ({{ summarize_days(s)|join('; ') }})
+      </option>
+      {% endfor %}
+    </select>
+    {{ field_error('work_schedule_id') }}
+
+    <div class="form-actions">
+      <button type="submit" class="btn">{{ 'Simpan perubahan' if employee else 'Tambah karyawan' }}</button>
+      <a href="{{ url_for('employees.list_employees') }}">Batal</a>
+    </div>
+  </form>
+</section>
+
+{% if employee %}
+<section class="card" aria-labelledby="face-title">
+  <h2 class="card-title" id="face-title">Templat wajah</h2>
+
+  {% if templates %}
+  <p class="muted">
+    {{ templates|length }} templat tersimpan dalam bentuk terenkripsi.
+    Data biometrik tidak pernah ditampilkan di halaman ini.
+  </p>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Didaftarkan</th>
+          <th scope="col">Model</th>
+          <th scope="col">Versi kunci</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in templates %}
+        <tr>
+          <td class="nowrap">{{ t.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
+          <td><code>{{ t.model_name }}</code></td>
+          <td>v{{ t.encryption_key_version }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if revoke_errors.get('_') %}
+  <div class="flash flash-error" role="alert">{{ revoke_errors['_'] }}</div>
+  {% endif %}
+
+  <form method="post" class="form revoke-form"
+        action="{{ url_for('employees.revoke_face_templates', employee_id=employee.id) }}"
+        onsubmit='return confirm({{ ("Cabut semua templat wajah " ~ employee.full_name ~ "? Tindakan ini tidak dapat dibatalkan.")|tojson }});'>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="reason">Alasan pencabutan</label>
+    <input id="reason" name="reason" type="text" maxlength="300" required
+           value="{{ revoke_reason }}"
+           {% if revoke_errors.get('reason') %}aria-invalid="true" aria-describedby="reason-error"{% endif %}>
+    <p class="hint">Contoh: wajah berubah signifikan, permintaan karyawan, atau karyawan berhenti bekerja.</p>
+    {% if revoke_errors.get('reason') %}<p class="field-error" id="reason-error">{{ revoke_errors['reason'] }}</p>{% endif %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-danger">Cabut semua templat wajah</button>
+    </div>
+  </form>
+  {% else %}
+  {% if revoke_errors.get('_') %}
+  <div class="flash flash-error" role="alert">{{ revoke_errors['_'] }}</div>
+  {% endif %}
+  <p class="muted">
+    Belum ada templat wajah. Pendaftaran wajah melalui kamera tersedia setelah Tahap 3.
+  </p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}
